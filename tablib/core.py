@@ -16,6 +16,8 @@ from tablib import formats
 
 from tablib.compat import OrderedDict, unicode
 
+from ustr import Ustr
+unicode = Ustr
 
 __title__ = 'tablib'
 __version__ = '0.12.1'
@@ -233,13 +235,21 @@ class Dataset(object):
         lens = [list(map(len, row)) for row in result]
         field_lens = list(map(max, zip(*lens)))
 
+        # test if box-drawing characters are double width
+        double_flag = False
+        if Ustr.len('─') == 2:
+            double_flag = True
+        if double_flag:
+            field_lens = [f + f % 2 for f in field_lens]  # to even number
+
         # delimiter between header and data
         if self.__headers:
-            result.insert(1, ['-' * length for length in field_lens])
+            result.insert(1, [Ustr('─' * length, length) for length in field_lens])
 
-        format_string = '|'.join('{%s:%s}' % item for item in enumerate(field_lens))
+        format_string = '{d}'.join('{%s:%s}' % item for item in enumerate(field_lens))
+        format_string = Ustr(format_string)
 
-        return '\n'.join(format_string.format(*row) for row in result)
+        return '\n'.join(format_string.format(*row, d = '┼' if self.__headers and i==1 else '│') for i,row in enumerate(result))
 
     def __str__(self):
         return self.__unicode__()
